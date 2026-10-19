@@ -60,6 +60,7 @@ Then remove `client-resume-button` from `dsh.profile.bundles` and restart.
 ## Limitations
 
 - **The button sits left of the model selector**, not next to the primary submit button. The closer `conversation.input.activity` slot is a `single` slot already taken by the voice-input plugin; claiming it prevents the app from starting.
+- **Starting a new turn dismisses it.** The interruption mark is cleared on the next `turn/start` — once you send anything after interrupting, the chance to continue that turn is gone.
 - **It cannot restore the interrupted output.** That partial content was never persisted. The plugin starts a new turn; it does not resume a token stream.
 
 ## Compatibility
