@@ -11,7 +11,7 @@ Adds a **Continue** button to the DeepSeek Harness composer. When the previous t
 
 ## Preview
 
-![preview](./docs/preview.png)
+![preview](./docs/screenshot.png)
 
 The circled button is **Continue**, sitting left of the model selector. It collapses when you start typing or attach a file, and expands back when the composer is cleared.
 

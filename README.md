@@ -11,7 +11,7 @@
 
 ## 效果
 
-![preview](./docs/preview.png)
+![preview](./docs/screenshot.png)
 
 红圈处即「继续」按钮，位于模型选择器左侧。开始输入或添加附件时它收窄消失，清空后展开回来。
 
