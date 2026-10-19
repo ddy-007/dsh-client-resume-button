@@ -2,7 +2,6 @@
 
 [![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](./LICENSE)
 [![DSH](https://img.shields.io/badge/DSH-0.2.0--rc.2%20%7C%200.2.1--rc.2-blue)](https://github.com/deepseek-ai/deepseek-harness)
-[![Platform](https://img.shields.io/badge/platform-web-lightgrey)]()
 
 Adds a **Continue** button to the DeepSeek Harness composer. When the previous turn was interrupted, one click asks the model to pick that turn back up.
 
@@ -10,11 +9,7 @@ Adds a **Continue** button to the DeepSeek Harness composer. When the previous t
 
 ---
 
-## What it solves
-
-Interrupting a turn in DSH is easy — press stop, hit `Esc Esc`, or the process crashes. But picking the work back up means retyping context so the model can re-orient.
-
-This plugin turns "continue" into a button:
+## Preview
 
 ```
 composer:  [+] [workspace] [1,949]    [▶] Deepseek-V4.1-Flash ▾ 🎤 [↑]
@@ -22,156 +17,51 @@ composer:  [+] [workspace] [1,949]    [▶] Deepseek-V4.1-Flash ▾ 🎤 [↑]
                               appears only after an interruption
 ```
 
-Clicking it tells the model:
+## What it does
 
-> The previous turn was interrupted. Continue where you left off. Do not repeat steps that already completed.
+The button appears when all of these hold:
 
-## When the button appears
+- The previous turn ended with `aborted` (user pressed stop), `interrupted` (crash), or `error`
+- The composer is empty (no text, no attachments)
+- No turn is running
 
-All of the following must hold:
+On click it sends two plugin-origin notices to the model: one asking it to continue, one reminding it to check for leftover processes and not repeat completed steps.
 
-1. The previous turn ended with one of:
-   - `aborted` whose sub-reason is `user` — **you pressed stop**
-   - `interrupted` — crash or restart
-   - `error` — runtime failure
-2. The composer is empty (no text, no attachments)
-3. No turn is currently running
-
-Start typing or attach an image and the button collapses away; clear the composer and it expands back.
-
-## Difference from `@mill413/dsh-session-resume`
-
-That plugin only handles `interrupted` (crash recovery) and **ignores user-initiated stops**.
-
-In DSH these are distinct events:
-
-| `turn/end` reason | Cause | This plugin | session-resume |
-|---|---|---|---|
-| `aborted` + `reason.kind: "user"` | **user pressed stop** | ✅ | ❌ |
-| `interrupted` | written by the crash-repair path | ✅ | ✅ |
-| `error` | runtime failure | ✅ | ❌ |
-| `completed` | normal finish | ❌ | ❌ |
-
-They can coexist and cover different scenarios.
+The button collapses when you start typing or attach a file, and expands back when the composer is cleared.
 
 ## Install
-
-### From GitHub (current)
 
 ```sh
 dsh plugin --profile web add github:ddy-007/dsh-client-resume-button
 ```
 
-### Manual link (local development)
+Restart DSH afterwards — the browser half loads at startup, hot reload does not pick it up.
 
-If the source is already on disk, create a junction and add the package name to the profile's `dsh.profile.bundles`:
+Manual install: add the package name to the profile's `dsh.profile.bundles` and link it into `node_modules`. Never let a BOM into `package.json`, or startup fails with `Unexpected token '\ufeff'`.
 
-```powershell
-# 1. Link into the profile's node_modules
-$profile = "$env:USERPROFILE\.dsh\profiles\desktop"
-cmd /c mklink /J "$profile\node_modules\client-resume-button" "C:\path\to\dsh-client-resume-button"
-```
-
-Then append `"client-resume-button"` to `dsh.profile.bundles` in `$profile\package.json`.
-
-**Never let a BOM creep into that file** — DSH will fail to boot with `Unexpected token '\ufeff'`. Writing it through Node is safest:
-
-```powershell
-node -e "const fs=require('fs');const p=process.argv[1];const j=JSON.parse(fs.readFileSync(p,'utf8'));if(!j.dsh.profile.bundles.includes('client-resume-button'))j.dsh.profile.bundles.push('client-resume-button');fs.writeFileSync(p,JSON.stringify(j,null,2)+'\n','utf8')" "$profile\package.json"
-```
-
-### Restart is required
-
-The browser half loads at startup; hot reload does not pick it up.
-
-### Uninstall
+## Uninstall
 
 ```sh
 dsh plugin --profile web remove client-resume-button
 ```
 
-Then delete `client-resume-button` from `dsh.profile.bundles` and restart.
+Then remove `client-resume-button` from `dsh.profile.bundles` and restart.
 
-## How it works
+## Limitations
 
-### Host half
-
-Registers a session projection `resumeButton` that folds over the committed log:
-
-```js
-turn/end { reason.kind: 'aborted', reason: { kind: 'user' } }  →  pending = { turn, kind }
-turn/start                                                     →  pending = null
-```
-
-Any new turn clears the mark — once you resume the conversation, "continue the previous turn" no longer applies.
-
-While the projection is non-empty, a Remote method `resumeButton.resume(sessionId)` is available:
-
-```js
-agent.inbox.prepend('next-turn', detailMessage);  // safety guidance first in queue
-agent.steer(leadMessage);                          // wake the idle agent
-```
-
-Both messages are delivered as **plugin-origin** (`source.kind = 'client-resume-button'`, `form: 'notice'`), never disguised as user input, and render as collapsed notice rows.
-
-### Browser half
-
-Registers a button in the `conversation.input.right` slot.
-
-Draft emptiness **cannot be read from slot props** — DSH's internal check is `draft.trim() === "" && attachments.length === 0` and both live inside the shell. Instead the plugin reads the primary submit button's `disabled` state:
-
-```js
-// class name looks like "<hash>_primary"
-button.disabled !== true   // there is submittable content
-```
-
-This mirrors DSH's own `primaryDisabled` computation and also covers attachment-only drafts.
-
-## Prompt text
-
-Wake-up + instruction:
-
-```
-The previous turn was interrupted. Continue where you left off.
-```
-
-State warning (follows Codex's `generic.turn_aborted` semantics, with `unified exec` replaced by the tools that actually exist in DSH):
-
-```
-The user interrupted the previous turn on purpose. Any running pwsh commands
-or background jobs may still be running. If any tools/commands were aborted,
-they may have partially executed. For any interrupted tool call, retry it only
-if it is read-only or idempotent; otherwise verify the external state before
-proceeding. Do not repeat steps that already completed.
-```
-
-## Important limitations
-
-### Button position
-
-It sits **left of the model selector**, not next to the primary submit button.
-
-The closer `conversation.input.activity` slot is unavailable: it is a `single` slot and, in the desktop build, it is taken by the voice-input plugin
-(`@deepseek-ai/dsh-experimental-client-ui-voice-input`). Claiming it makes that plugin fail to activate and prevents the whole app from starting.
-
-Do **not** try to work around this by probing for a free slot and registering at a lower priority — that is a race: the other plugin may not have registered yet when you probe, and it will then fail on the priority you already hold.
-
-### It does not restore the interrupted reasoning
-
-Assistant output that was still streaming at the moment of interruption is never persisted, so it cannot be recovered. The button starts a fresh turn with full context rather than continuing a token stream.
-
-Codex behaves the same way.
+- **The button sits left of the model selector**, not next to the primary submit button. The closer `conversation.input.activity` slot is a `single` slot already taken by the voice-input plugin; claiming it prevents the app from starting.
+- **It cannot restore the interrupted output.** That partial content was never persisted. The plugin starts a new turn; it does not resume a token stream.
 
 ## Compatibility
 
-Verified on DSH `0.2.0-rc.2` and `0.2.1-rc.2` (desktop).
+Verified on DSH `0.2.0-rc.2` and `0.2.1-rc.2`.
 
-The plugin relies on these internal contracts; re-verify after a DSH upgrade:
+Relies on these internal contracts, which may change across DSH releases:
 
 | Contract | Used for |
 |---|---|
 | `turn/end` reason enum | classifying the interruption |
-| `ctx.slots.register` + `conversation.input.right` | where the button mounts |
+| `conversation.input.right` slot | where the button mounts |
 | `<hash>_primary` class name | empty-draft detection |
 | `agent.inbox.prepend` / `agent.steer` | delivering the continuation |
 | `window.__ModuleLoader__.load` | client entry format |
