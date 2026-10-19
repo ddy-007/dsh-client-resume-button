@@ -25,8 +25,6 @@ The button appears when all of these hold:
 
 On click it sends two plugin-origin notices to the model: one asking it to continue, one reminding it to check for leftover processes and not repeat completed steps.
 
-The button collapses when you start typing or attach a file, and expands back when the composer is cleared.
-
 ## Install
 
 From GitHub:
