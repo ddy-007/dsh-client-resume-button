@@ -14,6 +14,14 @@
     "composer"
   ],
   "license": "MIT",
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/ddy-007/dsh-client-resume-button.git"
+  },
+  "bugs": {
+    "url": "https://github.com/ddy-007/dsh-client-resume-button/issues"
+  },
+  "homepage": "https://github.com/ddy-007/dsh-client-resume-button#readme",
   "main": "lib/index.js",
   "exports": {
     ".": {

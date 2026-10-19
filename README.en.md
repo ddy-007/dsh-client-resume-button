@@ -31,13 +31,27 @@ The button collapses when you start typing or attach a file, and expands back wh
 
 ## Install
 
+From GitHub:
+
 ```sh
 dsh plugin --profile web add github:ddy-007/dsh-client-resume-button
 ```
 
 Restart DSH afterwards — the browser half loads at startup, hot reload does not pick it up.
 
-Manual install: add the package name to the profile's `dsh.profile.bundles` and link it into `node_modules`. Never let a BOM into `package.json`, or startup fails with `Unexpected token '\ufeff'`.
+**If that errors** (older CLIs may not accept the `github:` prefix), use the plain git URL form:
+
+```sh
+dsh plugin --profile web add https://github.com/ddy-007/dsh-client-resume-button.git
+```
+
+**Manual install**: clone the repo, add `client-resume-button` to the profile's `dsh.profile.bundles`, and create a directory link to it under `node_modules`.
+
+Never let a BOM into `package.json`, or startup fails with `Unexpected token '\ufeff'`. Writing it through Node is safest:
+
+```sh
+node -e "const fs=require('fs');const p=process.argv[1];const j=JSON.parse(fs.readFileSync(p,'utf8'));if(!j.dsh.profile.bundles.includes('client-resume-button'))j.dsh.profile.bundles.push('client-resume-button');fs.writeFileSync(p,JSON.stringify(j,null,2)+'\n','utf8')" "$DSH_PROFILE/package.json"
+```
 
 ## Uninstall
 

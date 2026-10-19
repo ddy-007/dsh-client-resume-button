@@ -12,9 +12,9 @@
 ## 效果
 
 ```
-输入框底部：[+] [工作区内修改] [1,949]    [▶] Deepseek-V4.1-Flash ▾ 🎤 [↑]
-                                          ↑
-                                    上一轮被中断时才出现
+[+] [权限] [▶] [模型] [🎤] [↑]
+            ↑
+      上一轮被中断时出现
 ```
 
 ## 功能
@@ -31,13 +31,27 @@
 
 ## 安装
 
+从 GitHub 安装：
+
 ```sh
 dsh plugin --profile web add github:ddy-007/dsh-client-resume-button
 ```
 
 装完**重启 DSH**。浏览器端代码在启动时加载，热重载不生效。
 
-手动安装：把包名加入 profile 的 `dsh.profile.bundles`，并在 `node_modules` 建链接。改 `package.json` 时注意不要引入 BOM，否则启动报 `Unexpected token '\ufeff'`。
+**如果上面报错**（旧版 CLI 可能不支持 `github:` 前缀），改用 pnpm 的 git 语法：
+
+```sh
+dsh plugin --profile web add https://github.com/ddy-007/dsh-client-resume-button.git
+```
+
+**手动安装**：克隆到本地，把包名 `client-resume-button` 加进 profile 的 `dsh.profile.bundles`，并在 `node_modules` 下建目录链接指向它。
+
+改 `package.json` 时注意不要引入 BOM，否则启动报 `Unexpected token '\ufeff'`。用 Node 写入最稳妥：
+
+```sh
+node -e "const fs=require('fs');const p=process.argv[1];const j=JSON.parse(fs.readFileSync(p,'utf8'));if(!j.dsh.profile.bundles.includes('client-resume-button'))j.dsh.profile.bundles.push('client-resume-button');fs.writeFileSync(p,JSON.stringify(j,null,2)+'\n','utf8')" "$DSH_PROFILE/package.json"
+```
 
 ## 卸载
 
