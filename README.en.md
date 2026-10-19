@@ -1,5 +1,9 @@
 # client-resume-button
 
+[![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](./LICENSE)
+[![DSH](https://img.shields.io/badge/DSH-0.2.0--rc.2%20%7C%200.2.1--rc.2-blue)](https://github.com/deepseek-ai/deepseek-harness)
+[![Platform](https://img.shields.io/badge/platform-web-lightgrey)]()
+
 Adds a **Continue** button to the DeepSeek Harness composer. When the previous turn was interrupted, one click asks the model to pick that turn back up.
 
 [中文](./README.md) | English
@@ -52,11 +56,41 @@ They can coexist and cover different scenarios.
 
 ## Install
 
+### From GitHub (current)
+
 ```sh
-dsh plugin --profile web add client-resume-button
+dsh plugin --profile web add github:ddy-007/dsh-client-resume-button
 ```
 
-Restart DSH afterwards so the browser half loads.
+### Manual link (local development)
+
+If the source is already on disk, create a junction and add the package name to the profile's `dsh.profile.bundles`:
+
+```powershell
+# 1. Link into the profile's node_modules
+$profile = "$env:USERPROFILE\.dsh\profiles\desktop"
+cmd /c mklink /J "$profile\node_modules\client-resume-button" "C:\path\to\dsh-client-resume-button"
+```
+
+Then append `"client-resume-button"` to `dsh.profile.bundles` in `$profile\package.json`.
+
+**Never let a BOM creep into that file** — DSH will fail to boot with `Unexpected token '\ufeff'`. Writing it through Node is safest:
+
+```powershell
+node -e "const fs=require('fs');const p=process.argv[1];const j=JSON.parse(fs.readFileSync(p,'utf8'));if(!j.dsh.profile.bundles.includes('client-resume-button'))j.dsh.profile.bundles.push('client-resume-button');fs.writeFileSync(p,JSON.stringify(j,null,2)+'\n','utf8')" "$profile\package.json"
+```
+
+### Restart is required
+
+The browser half loads at startup; hot reload does not pick it up.
+
+### Uninstall
+
+```sh
+dsh plugin --profile web remove client-resume-button
+```
+
+Then delete `client-resume-button` from `dsh.profile.bundles` and restart.
 
 ## How it works
 

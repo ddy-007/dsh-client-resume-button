@@ -1,5 +1,9 @@
 # client-resume-button
 
+[![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](./LICENSE)
+[![DSH](https://img.shields.io/badge/DSH-0.2.0--rc.2%20%7C%200.2.1--rc.2-blue)](https://github.com/deepseek-ai/deepseek-harness)
+[![Platform](https://img.shields.io/badge/platform-web-lightgrey)]()
+
 给 DeepSeek Harness 的输入框加一个「继续」按钮：上一轮被中断时，点一下就能让模型接着把那一轮做完。
 
 [English](./README.en.md) | 中文
@@ -52,11 +56,43 @@ DSH 里两者是完全不同的事件：
 
 ## 安装
 
+### 方式一：从 GitHub 安装（当前）
+
 ```sh
-dsh plugin --profile web add client-resume-button
+dsh plugin --profile web add github:ddy-007/dsh-client-resume-button
 ```
 
-装完**重启 DSH**，浏览器半边的代码才会加载。
+### 方式二：手动链接（开发调试）
+
+如果本机已有源码，直接建链接后把包名加进 profile 的 `dsh.profile.bundles`：
+
+```powershell
+# 1. 链接进 profile 的 node_modules
+$profile = "$env:USERPROFILE\.dsh\profiles\desktop"
+cmd /c mklink /J "$profile\node_modules\client-resume-button" "C:\path\to\dsh-client-resume-button"
+
+# 2. 在 $profile\package.json 的 dsh.profile.bundles 末尾加一项
+#    "client-resume-button"
+```
+
+编辑 `package.json` 时**务必不要引入 BOM**，否则 DSH 启动会报
+`Unexpected token '\ufeff'`。用 Node 写入最稳妥：
+
+```powershell
+node -e "const fs=require('fs');const p=process.argv[1];const j=JSON.parse(fs.readFileSync(p,'utf8'));if(!j.dsh.profile.bundles.includes('client-resume-button'))j.dsh.profile.bundles.push('client-resume-button');fs.writeFileSync(p,JSON.stringify(j,null,2)+'\n','utf8')" "$profile\package.json"
+```
+
+### 装完必须重启
+
+浏览器半边的代码在启动时加载，热重载不会生效。
+
+### 卸载
+
+```sh
+dsh plugin --profile web remove client-resume-button
+```
+
+然后从 `dsh.profile.bundles` 里删掉 `client-resume-button` 并重启。
 
 ## 工作原理
 
