@@ -1,0 +1,5 @@
+# client-resume-button bundle patch：插入宿主侧插件行。
+# 「继续」按钮的浏览器半边由同一个 entry 的 dsh.client 声明自动发现。
+- insert:
+    - id: client-resume-button
+      name: client-resume-button
