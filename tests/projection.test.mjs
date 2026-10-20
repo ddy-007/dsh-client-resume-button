@@ -4,13 +4,13 @@
  * 投影把已提交的会话日志折叠成「是否还有一轮可以续跑」这一个布尔判断，
  * 因此测试直接对着真实 `turn/end` 事件形状断言，不需要 mock 运行时。
  *
- * 事件形状取自本机真实会话日志（39 个会话、471 条 turn/end）：
- *   {"kind":"completed"}                        382x
+ * 事件形状取自本机真实会话日志（39 个会话、473 条 turn/end）：
+ *   {"kind":"completed"}                        384x
  *   {"kind":"aborted","reason":{"kind":"user"}}  59x
  *   {"kind":"interrupted"}                        2x
- *   {"kind":"error","error":{...}}               20x+
+ *   {"kind":"error","error":{...}}               28x
  *
- * 运行：node --test tests/
+ * 运行：node --test
  *
  * @module client-resume-button/tests/projection
  */

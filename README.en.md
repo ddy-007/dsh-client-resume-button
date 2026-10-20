@@ -27,20 +27,20 @@ On click it sends two plugin-origin notices to the model: one asking it to conti
 
 ## Install
 
-### From the UI (recommended)
+```
+Plugins → Add plugin → enter client-resume-button → install → restart DSH
+```
 
-Plugins → **Add plugin** → enter the package name `client-resume-button` → install → restart DSH.
-
-### Command line
+Command-line equivalent:
 
 ```sh
-# `desktop` for the desktop client, `web` for dsh web
 dsh plugin --profile desktop add client-resume-button
 ```
 
-**Restart DSH afterwards** — the browser half loads at startup, hot reload does not pick it up.
+**Restart DSH afterwards** — the browser half loads at startup only.
 
-### Other sources
+<details>
+<summary>Other install methods</summary>
 
 From the Git repository (requires reaching `github.com`):
 
@@ -48,39 +48,36 @@ From the Git repository (requires reaching `github.com`):
 dsh plugin --profile desktop add github:ddy-007/dsh-client-resume-button
 ```
 
-If `github.com` is unreachable, a third-party mirror such as `ghproxy.net` can relay the clone:
+If `github.com` is unreachable, a third-party mirror such as `ghproxy.net` can relay the clone. A mirror is a convenience for working around network restrictions, not a recommended path — it routes your install through a third party whose supply-chain trust this project has not assessed. Prefer the npm package or a direct GitHub connection.
 
 ```sh
 dsh plugin --profile desktop add https://ghproxy.net/https://github.com/ddy-007/dsh-client-resume-button.git
 ```
 
-> A mirror is a convenience for working around network restrictions, not a recommended path. It routes your install through a third party whose supply-chain trust this project has not assessed; decide for yourself. Prefer the npm package or a direct GitHub connection.
-
-### Local development
-
-Use `link:` so you do not reinstall on every edit. `dsh` records the dependency in `package.json` and appends the package to `dsh.profile.bundles` for you:
+While editing the source, use `link:` so you do not reinstall on every change:
 
 ```sh
 dsh plugin --profile desktop add "link:<absolute path to the repo>"
 ```
 
-Edits under `lib/*.js` then take effect on the next restart.
-
-### Manual install
-
-Add `client-resume-button` to the profile's `dsh.profile.bundles`, and create a directory link to it under `node_modules`.
-
-Never let a BOM into `package.json`, or startup fails with `Unexpected token '\ufeff'`. Writing it through Node is safest:
-
-```sh
-node -e "const fs=require('fs');const p=process.argv[1];const j=JSON.parse(fs.readFileSync(p,'utf8'));if(!j.dsh.profile.bundles.includes('client-resume-button'))j.dsh.profile.bundles.push('client-resume-button');fs.writeFileSync(p,JSON.stringify(j,null,2)+'\n','utf8')" "$DSH_PROFILE/package.json"
-```
+</details>
 
 ## Uninstall
 
 ```sh
 dsh plugin --profile desktop remove client-resume-button
 ```
+
+## Verification
+
+Whether the button should appear is decided by `lib/projection.js`, which has no imports at all — so the tests need no installed dependencies and no network:
+
+```sh
+npm test          # 26 assertions
+npm run record    # one printed fold per interruption state
+```
+
+The event shapes in the suite come from real session logs rather than invented approximations. CI additionally checks the manifest and the packed contents.
 
 ## Limitations
 
@@ -90,17 +87,9 @@ dsh plugin --profile desktop remove client-resume-button
 
 ## Compatibility
 
-Verified on DSH `0.2.0-rc.2` and `0.2.1-rc.2`. The manifest declares `dsh.engines.dsh: ">=0.2.0-rc.2 <0.3.0"`, so the plugin manager refuses to install (or asks for an explicit exemption) below that floor and at `0.3.0`, keeping a build that relies on old internal contracts out of an incompatible host.
+Verified on DSH `0.2.0-rc.2` and `0.2.1-rc.2`. `dsh.engines.dsh` declares `>=0.2.0-rc.2 <0.3.0`; below that floor or at `0.3.0` the install is refused.
 
-Relies on these internal contracts, which may change across DSH releases:
-
-| Contract | Used for |
-|---|---|
-| `turn/end` reason enum | classifying the interruption |
-| `conversation.input.right` slot | where the button mounts |
-| `<hash>_primary` class name | empty-draft detection |
-| `agent.inbox.prepend` / `agent.steer` | delivering the continuation |
-| `window.__ModuleLoader__.load` | client entry format |
+Relies on these internal contracts, which may change across DSH releases: the `turn/end` reason enum, the `conversation.input.right` slot, the `<hash>_primary` class name, `agent.inbox.prepend` / `agent.steer`, and `window.__ModuleLoader__.load`.
 
 ## License
 

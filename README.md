@@ -27,60 +27,57 @@
 
 ## 安装
 
-### 图形界面（推荐）
+```
+插件页 → 「添加插件」→ 输入 client-resume-button → 安装 → 重启 DSH
+```
 
-插件页 → 「添加插件」→ 输入包名 `client-resume-button` → 安装 → 重启 DSH。
-
-### 命令行
+命令行等价写法：
 
 ```sh
-# 桌面客户端用 desktop，dsh web 用 web
 dsh plugin --profile desktop add client-resume-button
 ```
 
-**装完必须重启 DSH**。浏览器端代码在启动时加载，热重载不生效。
+**装完必须重启 DSH**，浏览器端代码只在启动时加载。
 
-### 其他来源
+<details>
+<summary>其他安装方式</summary>
 
-从 Git 仓库安装（需要能访问 `github.com`）：
+从 Git 仓库（需要能访问 `github.com`）：
 
 ```sh
 dsh plugin --profile desktop add github:ddy-007/dsh-client-resume-button
 ```
 
-若 `github.com` 不可达，可临时借助 `ghproxy.net` 这类第三方镜像转发：
+若 `github.com` 不可达，可临时借助 `ghproxy.net` 这类第三方镜像转发。镜像只是绕开网络限制的便利手段，不是推荐路径——它会把安装流量经第三方转发，其供应链可信度未经本项目评估。优先用 npm 包或直连 GitHub。
 
 ```sh
 dsh plugin --profile desktop add https://ghproxy.net/https://github.com/ddy-007/dsh-client-resume-button.git
 ```
 
-> 镜像只是绕开网络限制的便利手段，不是推荐路径。它会把你的安装流量经第三方转发，其供应链可信度未经本项目评估，请自行判断。优先使用 npm 包或直连 GitHub。
-
-### 本地开发安装
-
-改源码时用 `link:`，不必每次重装。`dsh` 会把依赖写进 `package.json` 并自动追加到 `dsh.profile.bundles`：
+改源码时用 `link:`，不必每次重装，改完只需重启：
 
 ```sh
 dsh plugin --profile desktop add "link:<仓库绝对路径>"
 ```
 
-之后改 `lib/*.js` 直接生效，只需重启 DSH。
-
-### 手动安装
-
-把包名 `client-resume-button` 加进 profile 的 `dsh.profile.bundles`，并在 `node_modules` 下建目录链接指向它。
-
-改 `package.json` 时注意不要引入 BOM，否则启动报 `Unexpected token '\ufeff'`。用 Node 写入最稳妥：
-
-```sh
-node -e "const fs=require('fs');const p=process.argv[1];const j=JSON.parse(fs.readFileSync(p,'utf8'));if(!j.dsh.profile.bundles.includes('client-resume-button'))j.dsh.profile.bundles.push('client-resume-button');fs.writeFileSync(p,JSON.stringify(j,null,2)+'\n','utf8')" "$DSH_PROFILE/package.json"
-```
+</details>
 
 ## 卸载
 
 ```sh
 dsh plugin --profile desktop remove client-resume-button
 ```
+
+## 验证
+
+判断按钮该不该出现的是 `lib/projection.js`，它没有任何 import，因此测试不需要装依赖、不需要联网：
+
+```sh
+npm test          # 26 个断言
+npm run record    # 每态一次折叠的运行记录
+```
+
+用例的事件形状取自真实会话日志，不是构造的近似值。CI 另跑 manifest 与打包内容检查。
 
 ## 限制
 
@@ -90,17 +87,9 @@ dsh plugin --profile desktop remove client-resume-button
 
 ## 兼容性
 
-实测 DSH `0.2.0-rc.2`、`0.2.1-rc.2`。`package.json` 声明 `dsh.engines.dsh: ">=0.2.0-rc.2 <0.3.0"`：低于下界或达到 `0.3.0` 时，插件管理器会拒绝安装（或要求显式豁免），避免把依赖旧内部约定的版本装进不兼容的宿主。
+实测 DSH `0.2.0-rc.2`、`0.2.1-rc.2`。`dsh.engines.dsh` 声明 `>=0.2.0-rc.2 <0.3.0`，低于下界或达到 `0.3.0` 会被拒绝安装。
 
-依赖以下内部约定，DSH 升级后可能失效：
-
-| 约定 | 用途 |
-|---|---|
-| `turn/end` reason 枚举 | 判断中断类型 |
-| `conversation.input.right` 槽位 | 按钮挂载位置 |
-| `<hash>_primary` 类名 | 判断草稿是否为空 |
-| `agent.inbox.prepend` / `agent.steer` | 投递续跑消息 |
-| `window.__ModuleLoader__.load` | 客户端入口格式 |
+依赖以下内部约定，DSH 升级后可能失效：`turn/end` reason 枚举、`conversation.input.right` 槽位、`<hash>_primary` 类名、`agent.inbox.prepend` / `agent.steer`、`window.__ModuleLoader__.load`。
 
 ## 许可
 

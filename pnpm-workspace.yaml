@@ -1,0 +1,5 @@
+# Only the test harness needs these. `autoInstallPeers` is off so pnpm does not
+# try to resolve this package's peerDependencies — some of them
+# (@deepseek-ai/dsh-client-ui-slash, @deepseek-ai/dsh-compact) are not published,
+# and pulling the whole runtime in would defeat the point of an isolated run.
+autoInstallPeers: false

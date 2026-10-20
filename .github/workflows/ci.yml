@@ -59,6 +59,34 @@ jobs:
             console.log("manifest OK: " + pkg.name + "@" + pkg.version + " engines=" + pkg.dsh.engines.dsh);
           '
 
+  isolated:
+    name: isolated interruption states
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Setup pnpm
+        uses: pnpm/action-setup@v4
+        with:
+          version: 10
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: pnpm
+
+      # Mounts the real Cordis context, the real projection registry and the real
+      # plugin service, then appends real turn/start + turn/end events to a real
+      # Session and reads the projection snapshot the client renders from. The
+      # SDK packages are the only reason this job installs anything.
+      - name: Install SDK peers
+        run: pnpm install --ignore-scripts --no-frozen-lockfile
+
+      - name: Run each interruption state under an isolated DSH_HOME
+        run: node scripts/verify-isolated.mjs
+
   pack:
     name: npm pack contents
     runs-on: ubuntu-latest
