@@ -28,15 +28,23 @@
  * @module client-resume-button/scripts/verify-isolated
  */
 import { existsSync, mkdtempSync, rmSync } from 'node:fs';
+import { createRequire } from 'node:module';
 import { tmpdir } from 'node:os';
 import { join } from 'node:path';
 import process from 'node:process';
 import { pathToFileURL } from 'node:url';
 
 /**
+ * 从项目根解析裸包名。裸 `import()` 是按**脚本自身位置**解析的，而脚本在
+ * scripts/ 下、依赖装在项目 node_modules 里，所以必须显式借 createRequire
+ * 以项目根为基准，否则 CI 上会 ERR_MODULE_NOT_FOUND。
+ */
+const requireFromProject = createRequire(pathToFileURL(join(process.cwd(), 'package.json')));
+
+/**
  * 解析一个 SDK 包，按优先级：
- *   1. `DSH_SDK_ROOT` 指定的目录
- *   2. 普通 node_modules 解析（CI 装了 devDependencies 时走这条）
+ *   1. `DSH_SDK_ROOT` 指定的目录（开发机指向 DSH 安装位置）
+ *   2. 项目 node_modules（CI 装了 devDependencies 时走这条）
  *   3. 本机 DSH 安装位置（开发机没有 devDependencies 时走这条）
  */
 async function load(pkg) {
@@ -44,9 +52,9 @@ async function load(pkg) {
     return import(pathToFileURL(join(process.env.DSH_SDK_ROOT, pkg, 'lib/index.js')).href);
   }
   try {
-    return await import(pkg);
+    return await import(pathToFileURL(requireFromProject.resolve(pkg)).href);
   } catch (error) {
-    if (error?.code !== 'ERR_MODULE_NOT_FOUND' && error?.code !== 'MODULE_NOT_FOUND') throw error;
+    if (error?.code !== 'MODULE_NOT_FOUND' && error?.code !== 'ERR_MODULE_NOT_FOUND') throw error;
   }
   for (const root of ['D:/dsh/node_modules', 'C:/Users/wwww/.dsh/profiles/node_modules']) {
     const entry = join(root, pkg, 'lib/index.js');
@@ -63,9 +71,9 @@ async function loadZod() {
     return import(pathToFileURL(join(process.env.DSH_SDK_ROOT, '..', 'zod/index.js')).href);
   }
   try {
-    return await import('zod');
+    return await import(pathToFileURL(requireFromProject.resolve('zod')).href);
   } catch (error) {
-    if (error?.code !== 'ERR_MODULE_NOT_FOUND' && error?.code !== 'MODULE_NOT_FOUND') throw error;
+    if (error?.code !== 'MODULE_NOT_FOUND' && error?.code !== 'ERR_MODULE_NOT_FOUND') throw error;
   }
   for (const root of ['D:/dsh/node_modules', 'C:/Users/wwww/.dsh/profiles/node_modules']) {
     const entry = join(root, 'zod/index.js');
