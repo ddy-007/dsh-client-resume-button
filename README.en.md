@@ -17,11 +17,12 @@ The circled button is **Continue**, sitting left of the model selector. It colla
 
 ## What it does
 
-The button appears when all of these hold:
+The button is visible when both hold:
 
 - The previous turn ended with `aborted` (user pressed stop), `interrupted` (crash), or `error`
-- The composer is empty (no text, no attachments)
-- No turn is running
+- The primary submit button is disabled — meaning the composer is empty, no attachment is pending upload, and no turn is running
+
+`aborted` only counts when the sub-reason is the user pressing stop; a timeout or policy cancel does not.
 
 On click it sends two plugin-origin notices to the model: one asking it to continue, one reminding it to check for leftover processes and not repeat completed steps.
 
@@ -31,7 +32,7 @@ On click it sends two plugin-origin notices to the model: one asking it to conti
 Plugins → Add plugin → enter client-resume-button → install → restart DSH
 ```
 
-Command-line equivalent:
+Command-line equivalent (`--profile` is the profile you actually run: `desktop` for the desktop client, `web` for `dsh web`):
 
 ```sh
 dsh plugin --profile desktop add client-resume-button
@@ -70,14 +71,15 @@ dsh plugin --profile desktop remove client-resume-button
 
 ## Verification
 
-Whether the button should appear is decided by `lib/projection.js`, which has no imports at all — so the tests need no installed dependencies and no network:
-
 ```sh
-npm test          # 26 assertions
-npm run record    # one printed fold per interruption state
+npm test         # 26 assertions: each interruption leaves a mark, completed and timeout do not
+npm run record   # one printed fold per state
+npm run verify   # mounts the real projection registry in a throwaway DSH_HOME
 ```
 
-The event shapes in the suite come from real session logs rather than invented approximations. CI additionally checks the manifest and the packed contents.
+`npm test` and `npm run record` touch only `lib/projection.js`, which has no imports, so they need no installed dependencies and no network. `npm run verify` needs the SDK (`pnpm install`): it mounts a real Cordis context and the real projection registry, appends real events to a real `Session`, then reads the snapshot the client renders from.
+
+The event shapes in the suite come from real session logs rather than invented approximations.
 
 ## Limitations
 

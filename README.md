@@ -17,11 +17,12 @@
 
 ## 功能
 
-按钮出现条件（需全部满足）：
+按钮可见需要同时满足两点：
 
 - 上一轮以 `aborted`（用户按停止）、`interrupted`（崩溃）或 `error` 结束
-- 输入框为空（无文字、无附件）
-- 当前无轮次运行
+- 主提交按钮处于禁用态——即输入框为空、没有待上传附件、也没有轮次在跑
+
+`aborted` 只在子原因为用户主动停止时才算，超时或策略取消不算。
 
 点击后发送两条 plugin 来源的提示给模型：一条要求继续，一条提醒检查残留进程、不重做已完成步骤。
 
@@ -31,7 +32,7 @@
 插件页 → 「添加插件」→ 输入 client-resume-button → 安装 → 重启 DSH
 ```
 
-命令行等价写法：
+命令行等价写法（`--profile` 填你实际在用的：桌面客户端 `desktop`，`dsh web` 用 `web`）：
 
 ```sh
 dsh plugin --profile desktop add client-resume-button
@@ -70,14 +71,15 @@ dsh plugin --profile desktop remove client-resume-button
 
 ## 验证
 
-判断按钮该不该出现的是 `lib/projection.js`，它没有任何 import，因此测试不需要装依赖、不需要联网：
-
 ```sh
-npm test          # 26 个断言
-npm run record    # 每态一次折叠的运行记录
+npm test      # 26 个断言：三种中断各留标记，completed 与超时不留
+npm run record   # 每态一次折叠的人可读记录
+npm run verify   # 在临时 DSH_HOME 里用真实投影注册表跑一遍
 ```
 
-用例的事件形状取自真实会话日志，不是构造的近似值。CI 另跑 manifest 与打包内容检查。
+`npm test` 与 `npm run record` 只碰 `lib/projection.js`，它没有 import，所以不需要装依赖、不需要联网。`npm run verify` 需要 SDK 依赖（`pnpm install`），它会挂载真实的 Cordis 上下文与投影注册表，向真实 `Session` 追加真实事件，再读客户端渲染用的那份快照。
+
+用例的事件形状取自真实会话日志，不是构造的近似值。
 
 ## 限制
 
