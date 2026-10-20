@@ -1,0 +1,99 @@
+name: CI
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+
+permissions:
+  contents: read
+
+jobs:
+  test:
+    name: projection tests
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: 22
+
+      # lib/projection.js has no imports, so the suite runs without installing
+      # anything: no registry access, no lockfile, no build step. Bare
+      # `node --test` auto-discovers tests/; a quoted glob would be passed
+      # through unexpanded and silently match nothing.
+      - name: Projection contract tests
+        run: node --test
+
+      # Human-readable record of one fold per interruption state, so a reviewer
+      # can see the behaviour rather than read an assertion.
+      - name: Interruption state record
+        run: node scripts/record-states.mjs
+
+      - name: Manifest sanity
+        run: |
+          node -e '
+            const fs = require("node:fs");
+            const pkg = JSON.parse(fs.readFileSync("package.json", "utf8"));
+            const fail = (m) => { console.error("FAIL: " + m); process.exit(1); };
+
+            if (pkg.dsh?.bundle?.patch !== "./cordis.patch.yml") fail("dsh.bundle.patch missing or wrong");
+            if (!fs.existsSync(pkg.dsh.bundle.patch)) fail("bundle patch file does not exist");
+            if (pkg.dsh?.client?.platform !== "web") fail("dsh.client.platform must be web");
+            if (!Array.isArray(pkg.dsh?.client?.inject) || pkg.dsh.client.inject.length === 0) fail("dsh.client.inject must be a non-empty array");
+            if (typeof pkg.dsh?.engines?.dsh !== "string") fail("dsh.engines.dsh must be declared");
+            if (typeof pkg.peerDependencies?.["@deepseek-ai/dsh"] !== "string") fail("@deepseek-ai/dsh peer must be declared");
+            if (pkg.peerDependencies["@deepseek-ai/dsh"] !== pkg.dsh.engines.dsh) fail("engines.dsh and the @deepseek-ai/dsh peer must state the same range");
+            if (pkg.private === true) fail("package must not be private");
+            if (!pkg.name || !pkg.version) fail("name and version are required");
+
+            // The entry id the bundle patch inserts must be the package name, so
+            // the store can match an installed row by package identity.
+            const patch = fs.readFileSync(pkg.dsh.bundle.patch, "utf8");
+            if (!patch.includes("id: " + pkg.name)) fail("bundle patch must insert an entry id equal to the package name");
+            if (!patch.includes("name: " + pkg.name)) fail("bundle patch must mount the package by its own name");
+
+            console.log("manifest OK: " + pkg.name + "@" + pkg.version + " engines=" + pkg.dsh.engines.dsh);
+          '
+
+  pack:
+    name: npm pack contents
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: 22
+
+      - name: Assert the tarball ships what the plugin needs
+        run: |
+          npm pack --dry-run --json > /tmp/pack.json
+          node -e '
+            const fs = require("node:fs");
+            const doc = JSON.parse(fs.readFileSync("/tmp/pack.json", "utf8"));
+            // npm 12 keys the report by package name instead of returning an array.
+            const entry = Object.values(doc)[0];
+            const files = entry.files.map((f) => f.path);
+            const need = [
+              "package.json",
+              "cordis.patch.yml",
+              "lib/index.js",
+              "lib/client.js",
+              "lib/projection.js",
+              "lib/resume.js",
+              "README.md",
+              "LICENSE"
+            ];
+            const missing = need.filter((f) => !files.includes(f));
+            if (missing.length > 0) {
+              console.error("FAIL: tarball is missing " + missing.join(", "));
+              process.exit(1);
+            }
+            console.log("pack OK: " + files.length + " files, " + entry.size + " bytes packed");
+          '

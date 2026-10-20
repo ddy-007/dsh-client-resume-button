@@ -47,6 +47,10 @@
     "README.en.md",
     "LICENSE"
   ],
+  "scripts": {
+    "test": "node --test",
+    "record": "node scripts/record-states.mjs"
+  },
   "engines": {
     "node": "^22.19 || >=24"
   },
