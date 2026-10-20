@@ -85,7 +85,24 @@ jobs:
         run: pnpm install --ignore-scripts --no-frozen-lockfile
 
       - name: Run each interruption state under an isolated DSH_HOME
-        run: node scripts/verify-isolated.mjs
+        env:
+          DSH_VERIFY_DEBUG: "1"
+        run: |
+          node -e '
+            const { createRequire } = require("node:module");
+            const { pathToFileURL } = require("node:url");
+            const { join } = require("node:path");
+            const { existsSync } = require("node:fs");
+            console.log("cwd = " + process.cwd());
+            console.log("package.json here = " + existsSync(join(process.cwd(), "package.json")));
+            console.log("node_modules here = " + existsSync(join(process.cwd(), "node_modules")));
+            const r = createRequire(pathToFileURL(join(process.cwd(), "package.json")));
+            for (const p of ["@deepseek-ai/dsh-session-projection", "@deepseek-ai/cordis", "zod"]) {
+              try { console.log(p + " -> " + r.resolve(p)); }
+              catch (e) { console.log(p + " -> FAIL " + e.code); }
+            }
+          '
+          node scripts/verify-isolated.mjs
 
   pack:
     name: npm pack contents

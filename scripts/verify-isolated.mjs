@@ -32,14 +32,22 @@ import { createRequire } from 'node:module';
 import { tmpdir } from 'node:os';
 import { join } from 'node:path';
 import process from 'node:process';
-import { pathToFileURL } from 'node:url';
+import { fileURLToPath, pathToFileURL } from 'node:url';
+
+/**
+ * 项目根：由**脚本自身位置**推导（scripts/ 的上一级），不依赖 cwd。
+ * 这样无论调用方从哪个目录运行、CI 的工作目录如何设置，解析基准都一致。
+ */
+const PROJECT_ROOT = fileURLToPath(new URL('..', import.meta.url));
 
 /**
  * 从项目根解析裸包名。裸 `import()` 是按**脚本自身位置**解析的，而脚本在
  * scripts/ 下、依赖装在项目 node_modules 里，所以必须显式借 createRequire
  * 以项目根为基准，否则 CI 上会 ERR_MODULE_NOT_FOUND。
  */
-const requireFromProject = createRequire(pathToFileURL(join(process.cwd(), 'package.json')));
+const requireFromProject = createRequire(
+  pathToFileURL(join(PROJECT_ROOT, 'package.json')),
+);
 
 /**
  * 解析一个 SDK 包，按优先级：
@@ -55,6 +63,11 @@ async function load(pkg) {
     return await import(pathToFileURL(requireFromProject.resolve(pkg)).href);
   } catch (error) {
     if (error?.code !== 'MODULE_NOT_FOUND' && error?.code !== 'ERR_MODULE_NOT_FOUND') throw error;
+    if (process.env.DSH_VERIFY_DEBUG !== undefined) {
+      process.stderr.write(
+        `resolve(${pkg}) from ${process.cwd()} failed: ${error.message.split('\n')[0]}\n`,
+      );
+    }
   }
   for (const root of ['D:/dsh/node_modules', 'C:/Users/wwww/.dsh/profiles/node_modules']) {
     const entry = join(root, pkg, 'lib/index.js');
@@ -184,7 +197,7 @@ async function main() {
   const { Session } = await load('@deepseek-ai/dsh-session');
   const zod = await loadZod();
   const plugin = await import(
-    pathToFileURL(join(process.cwd(), 'lib/index.js')).href
+    pathToFileURL(join(PROJECT_ROOT, 'lib/index.js')).href
   );
 
   const deps = {
