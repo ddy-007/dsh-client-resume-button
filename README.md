@@ -1,7 +1,7 @@
 # client-resume-button
 
 [![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](./LICENSE)
-[![DSH](https://img.shields.io/badge/DSH-0.2.0--rc.2%20%7C%200.2.1--rc.2-blue)](https://github.com/deepseek-ai/deepseek-harness)
+[![DSH](https://img.shields.io/badge/DSH-%3E%3D0.2.0--rc.2-blue)](https://github.com/deepseek-ai/deepseek-harness)
 
 给 DeepSeek Harness 的输入框加一个「继续」按钮：上一轮被中断后，点一下就能让模型接着把那一轮做完。
 
@@ -27,21 +27,41 @@
 
 ## 安装
 
+`--profile` 后面的名字填你实际在用的 profile。桌面客户端用 `desktop`，`dsh web` 用 `web`。
+
 从 GitHub 安装：
 
 ```sh
-dsh plugin --profile web add github:ddy-007/dsh-client-resume-button
+dsh plugin --profile desktop add github:ddy-007/dsh-client-resume-button
+```
+
+**国内网络**：`github.com` 的 git 协议常被阻断，可走 `ghproxy.net` 镜像（只读，够装插件）：
+
+```sh
+dsh plugin --profile desktop add https://ghproxy.net/https://github.com/ddy-007/dsh-client-resume-button.git
+```
+
+**如果都报错**（旧版 CLI 可能不认 `github:` 前缀），改用 pnpm 的 git 语法：
+
+```sh
+dsh plugin --profile desktop add https://github.com/ddy-007/dsh-client-resume-button.git
 ```
 
 装完**重启 DSH**。浏览器端代码在启动时加载，热重载不生效。
 
-**如果上面报错**（旧版 CLI 可能不支持 `github:` 前缀），改用 pnpm 的 git 语法：
+### 本地开发安装
+
+改源码时用 `link:`，不必每次重装。`dsh` 会把依赖写进 `package.json` 并自动追加到 `dsh.profile.bundles`：
 
 ```sh
-dsh plugin --profile web add https://github.com/ddy-007/dsh-client-resume-button.git
+dsh plugin --profile desktop add "link:<仓库绝对路径>"
 ```
 
-**手动安装**：克隆到本地，把包名 `client-resume-button` 加进 profile 的 `dsh.profile.bundles`，并在 `node_modules` 下建目录链接指向它。
+之后改 `lib/*.js` 直接生效，只需重启 DSH。
+
+### 手动安装
+
+把包名 `client-resume-button` 加进 profile 的 `dsh.profile.bundles`，并在 `node_modules` 下建目录链接指向它。
 
 改 `package.json` 时注意不要引入 BOM，否则启动报 `Unexpected token '\ufeff'`。用 Node 写入最稳妥：
 
@@ -52,10 +72,8 @@ node -e "const fs=require('fs');const p=process.argv[1];const j=JSON.parse(fs.re
 ## 卸载
 
 ```sh
-dsh plugin --profile web remove client-resume-button
+dsh plugin --profile desktop remove client-resume-button
 ```
-
-再从 `dsh.profile.bundles` 删掉 `client-resume-button`，重启。
 
 ## 限制
 
@@ -65,7 +83,7 @@ dsh plugin --profile web remove client-resume-button
 
 ## 兼容性
 
-实测 DSH `0.2.0-rc.2`、`0.2.1-rc.2`。
+实测 DSH `0.2.0-rc.2`、`0.2.1-rc.2`。`package.json` 声明了 `dsh.engines.dsh: ">=0.2.0-rc.2"`，DSH 低于此版本时插件管理器会拒绝安装（或要求显式豁免），高于此版本则放行。
 
 依赖以下内部约定，DSH 升级后可能失效：
 

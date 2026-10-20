@@ -1,6 +1,6 @@
 {
   "name": "client-resume-button",
-  "version": "0.1.1",
+  "version": "0.1.2",
   "type": "module",
   "description": "Adds a Continue button to the DeepSeek Harness composer: when the previous turn was interrupted (by the user, a crash, or an error), one click asks the model to pick that turn back up.",
   "keywords": [
@@ -13,6 +13,7 @@
     "interrupted",
     "composer"
   ],
+  "author": "ddy-007",
   "license": "MIT",
   "repository": {
     "type": "git",
@@ -62,15 +63,14 @@
         "@deepseek-ai/dsh-client-ui-slots"
       ]
     },
-    "compatibility": {
-      "dshReleases": [
-        "0.2.0-rc.2",
-        "0.2.1-rc.2"
-      ]
+    "engines": {
+      "dsh": ">=0.2.0-rc.2"
     }
   },
   "peerDependencies": {
     "@deepseek-ai/cordis": "*",
+    "@deepseek-ai/dsh": ">=0.2.0-rc.2",
+    "@deepseek-ai/dsh-client-locale": "*",
     "@deepseek-ai/dsh-client-ui-conversation": "*",
     "@deepseek-ai/dsh-client-ui-primitives": "*",
     "@deepseek-ai/dsh-client-ui-slots": "*",
