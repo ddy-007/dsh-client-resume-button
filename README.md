@@ -27,27 +27,34 @@
 
 ## 安装
 
-`--profile` 后面的名字填你实际在用的 profile。桌面客户端用 `desktop`，`dsh web` 用 `web`。
+### 图形界面（推荐）
 
-从 GitHub 安装：
+插件页 → 「添加插件」→ 输入包名 `client-resume-button` → 安装 → 重启 DSH。
+
+### 命令行
+
+```sh
+# 桌面客户端用 desktop，dsh web 用 web
+dsh plugin --profile desktop add client-resume-button
+```
+
+**装完必须重启 DSH**。浏览器端代码在启动时加载，热重载不生效。
+
+### 其他来源
+
+从 Git 仓库安装（需要能访问 `github.com`）：
 
 ```sh
 dsh plugin --profile desktop add github:ddy-007/dsh-client-resume-button
 ```
 
-**国内网络**：`github.com` 的 git 协议常被阻断，可走 `ghproxy.net` 镜像（只读，够装插件）：
+若 `github.com` 不可达，可临时借助 `ghproxy.net` 这类第三方镜像转发：
 
 ```sh
 dsh plugin --profile desktop add https://ghproxy.net/https://github.com/ddy-007/dsh-client-resume-button.git
 ```
 
-**如果都报错**（旧版 CLI 可能不认 `github:` 前缀），改用 pnpm 的 git 语法：
-
-```sh
-dsh plugin --profile desktop add https://github.com/ddy-007/dsh-client-resume-button.git
-```
-
-装完**重启 DSH**。浏览器端代码在启动时加载，热重载不生效。
+> 镜像只是绕开网络限制的便利手段，不是推荐路径。它会把你的安装流量经第三方转发，其供应链可信度未经本项目评估，请自行判断。优先使用 npm 包或直连 GitHub。
 
 ### 本地开发安装
 
@@ -83,7 +90,7 @@ dsh plugin --profile desktop remove client-resume-button
 
 ## 兼容性
 
-实测 DSH `0.2.0-rc.2`、`0.2.1-rc.2`。`package.json` 声明了 `dsh.engines.dsh: ">=0.2.0-rc.2"`，DSH 低于此版本时插件管理器会拒绝安装（或要求显式豁免），高于此版本则放行。
+实测 DSH `0.2.0-rc.2`、`0.2.1-rc.2`。`package.json` 声明 `dsh.engines.dsh: ">=0.2.0-rc.2 <0.3.0"`：低于下界或达到 `0.3.0` 时，插件管理器会拒绝安装（或要求显式豁免），避免把依赖旧内部约定的版本装进不兼容的宿主。
 
 依赖以下内部约定，DSH 升级后可能失效：
 

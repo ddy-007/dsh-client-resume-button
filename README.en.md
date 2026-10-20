@@ -27,27 +27,34 @@ On click it sends two plugin-origin notices to the model: one asking it to conti
 
 ## Install
 
-Put the profile you actually run after `--profile`: `desktop` for the desktop client, `web` for `dsh web`.
+### From the UI (recommended)
 
-From GitHub:
+Plugins → **Add plugin** → enter the package name `client-resume-button` → install → restart DSH.
+
+### Command line
+
+```sh
+# `desktop` for the desktop client, `web` for dsh web
+dsh plugin --profile desktop add client-resume-button
+```
+
+**Restart DSH afterwards** — the browser half loads at startup, hot reload does not pick it up.
+
+### Other sources
+
+From the Git repository (requires reaching `github.com`):
 
 ```sh
 dsh plugin --profile desktop add github:ddy-007/dsh-client-resume-button
 ```
 
-**Mainland China networks**: the git protocol to `github.com` is frequently blocked. Use the `ghproxy.net` mirror (read-only, enough to install):
+If `github.com` is unreachable, a third-party mirror such as `ghproxy.net` can relay the clone:
 
 ```sh
 dsh plugin --profile desktop add https://ghproxy.net/https://github.com/ddy-007/dsh-client-resume-button.git
 ```
 
-**If that errors** (older CLIs may not accept the `github:` prefix), use the plain git URL form:
-
-```sh
-dsh plugin --profile desktop add https://github.com/ddy-007/dsh-client-resume-button.git
-```
-
-Restart DSH afterwards — the browser half loads at startup, hot reload does not pick it up.
+> A mirror is a convenience for working around network restrictions, not a recommended path. It routes your install through a third party whose supply-chain trust this project has not assessed; decide for yourself. Prefer the npm package or a direct GitHub connection.
 
 ### Local development
 
@@ -83,7 +90,7 @@ dsh plugin --profile desktop remove client-resume-button
 
 ## Compatibility
 
-Verified on DSH `0.2.0-rc.2` and `0.2.1-rc.2`. The manifest declares `dsh.engines.dsh: ">=0.2.0-rc.2"`, so the plugin manager refuses to install on an older DSH (or asks for an explicit exemption) and allows newer ones.
+Verified on DSH `0.2.0-rc.2` and `0.2.1-rc.2`. The manifest declares `dsh.engines.dsh: ">=0.2.0-rc.2 <0.3.0"`, so the plugin manager refuses to install (or asks for an explicit exemption) below that floor and at `0.3.0`, keeping a build that relies on old internal contracts out of an incompatible host.
 
 Relies on these internal contracts, which may change across DSH releases:
 
