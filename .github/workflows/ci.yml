@@ -33,63 +33,12 @@ jobs:
       - name: Interruption state record
         run: node scripts/record-states.mjs
 
+      # Kept in a file rather than an inline `node -e '...'`: a single apostrophe
+      # inside the script closes the bash string early and the rest is run as
+      # commands. That is not hypothetical — a comment reading "DSH's gate" broke
+      # this job with `line 22: //: Is a directory` (exit 126).
       - name: Manifest sanity
-        run: |
-          node -e '
-            const fs = require("node:fs");
-            const pkg = JSON.parse(fs.readFileSync("package.json", "utf8"));
-            const fail = (m) => { console.error("FAIL: " + m); process.exit(1); };
-
-            if (pkg.dsh?.bundle?.patch !== "./cordis.patch.yml") fail("dsh.bundle.patch missing or wrong");
-            if (!fs.existsSync(pkg.dsh.bundle.patch)) fail("bundle patch file does not exist");
-            if (pkg.dsh?.client?.platform !== "web") fail("dsh.client.platform must be web");
-            if (!Array.isArray(pkg.dsh?.client?.inject) || pkg.dsh.client.inject.length === 0) fail("dsh.client.inject must be a non-empty array");
-            if (typeof pkg.dsh?.engines?.dsh !== "string") fail("dsh.engines.dsh must be declared");
-            if (typeof pkg.peerDependencies?.["@deepseek-ai/dsh"] !== "string") fail("@deepseek-ai/dsh peer must be declared");
-            if (pkg.peerDependencies["@deepseek-ai/dsh"] !== pkg.dsh.engines.dsh) fail("engines.dsh and the @deepseek-ai/dsh peer must state the same range");
-
-            // Two separate traps, both invisible to a plain "does it look okay" read:
-            //
-            // 1. A single segment like ">=0.2.0-rc.2 <0.3.0" silently drops every
-            //    prerelease on a tuple it has no prerelease comparator for.
-            //    node-semver only admits a prerelease when some comparator shares
-            //    its full major.minor.patch AND carries a prerelease tag, so
-            //    0.2.1-rc.2 is excluded and `npm install` fails with ERESOLVE.
-            //    DSH's gate evaluates with includePrerelease: true, which hides it.
-            // 2. "*" on an @deepseek-ai peer resolves to that package's npm "latest"
-            //    tag, which lags far behind ("next" is the harness-matched line).
-            //    npm then builds an old 0.0.x graph that includes packages never
-            //    published to npm, and the install fails outright.
-            //
-            // These are structural checks on the declared strings; the `install`
-            // job below proves the same thing the expensive way, by resolving
-            // them with npm for real.
-            const range = pkg.dsh.engines.dsh;
-
-            for (const [name, dep] of Object.entries(pkg.peerDependencies ?? {})) {
-              if (!name.startsWith("@deepseek-ai/")) continue;
-              if (dep.trim() === "*") fail(name + " peer must not be '*' (npm resolves it to the stale latest tag)");
-            }
-            for (const [name, dep] of Object.entries(pkg.peerDependencies ?? {})) {
-              if (name === "@deepseek-ai/dsh" || !name.startsWith("@deepseek-ai/dsh-")) continue;
-              if (dep !== range) fail(name + " peer must use the same range as engines.dsh");
-            }
-
-            // <0.3.0-0 is the sentinel that keeps 0.3.0 prereleases out as well;
-            // a bare <0.3.0 would let 0.3.0-rc.1 through.
-            if (!/<0\.3\.0-0/.test(range)) fail("engines.dsh upper bound must use the <0.3.0-0 sentinel");
-
-            if (pkg.private === true) fail("package must not be private");
-            if (!pkg.name || !pkg.version) fail("name and version are required");
-
-            // The entry id the bundle patch inserts must be the package name, so
-            // the store can match an installed row by package identity.
-            const patch = fs.readFileSync(pkg.dsh.bundle.patch, "utf8");
-            if (!patch.includes("id: " + pkg.name)) fail("bundle patch must insert an entry id equal to the package name");
-            if (!patch.includes("name: " + pkg.name)) fail("bundle patch must mount the package by its own name");
-
-            console.log("manifest OK: " + pkg.name + "@" + pkg.version + " engines=" + pkg.dsh.engines.dsh);
-          '
+        run: node scripts/check-manifest.mjs
 
   isolated:
     name: isolated interruption states
@@ -119,22 +68,7 @@ jobs:
       - name: Run each interruption state under an isolated DSH_HOME
         env:
           DSH_VERIFY_DEBUG: "1"
-        run: |
-          node -e '
-            const { createRequire } = require("node:module");
-            const { pathToFileURL } = require("node:url");
-            const { join } = require("node:path");
-            const { existsSync } = require("node:fs");
-            console.log("cwd = " + process.cwd());
-            console.log("package.json here = " + existsSync(join(process.cwd(), "package.json")));
-            console.log("node_modules here = " + existsSync(join(process.cwd(), "node_modules")));
-            const r = createRequire(pathToFileURL(join(process.cwd(), "package.json")));
-            for (const p of ["@deepseek-ai/dsh-session-projection", "@deepseek-ai/cordis", "zod"]) {
-              try { console.log(p + " -> " + r.resolve(p)); }
-              catch (e) { console.log(p + " -> FAIL " + e.code); }
-            }
-          '
-          node scripts/verify-isolated.mjs
+        run: node scripts/verify-isolated.mjs
 
   install:
     name: npm install against the real harness
@@ -167,16 +101,7 @@ jobs:
             echo "=== harness $VERSION ==="
             (cd "$DIR" && npm install "@deepseek-ai/dsh@$VERSION" --no-audit --no-fund --loglevel=error)
             (cd "$DIR" && npm install "$TARBALL" --no-audit --no-fund --loglevel=error)
-            node -e '
-              const fs = require("node:fs");
-              const dir = process.argv[1];
-              const manifest = JSON.parse(fs.readFileSync(dir + "/node_modules/client-resume-button/package.json", "utf8"));
-              if (manifest.version === undefined) { console.error("FAIL: plugin not installed"); process.exit(1); }
-              if (manifest.dsh?.bundle?.patch !== "./cordis.patch.yml") { console.error("FAIL: dsh.bundle lost on install"); process.exit(1); }
-              const patch = fs.readFileSync(dir + "/node_modules/client-resume-button/cordis.patch.yml", "utf8");
-              if (!patch.includes("client-resume-button")) { console.error("FAIL: bundle patch is wrong"); process.exit(1); }
-              console.log("    installed " + manifest.name + "@" + manifest.version + " with bundle intact");
-            ' "$DIR"
+            node scripts/check-install.mjs "$DIR"
           done
 
   pack:
@@ -194,26 +119,4 @@ jobs:
       - name: Assert the tarball ships what the plugin needs
         run: |
           npm pack --dry-run --json > /tmp/pack.json
-          node -e '
-            const fs = require("node:fs");
-            const doc = JSON.parse(fs.readFileSync("/tmp/pack.json", "utf8"));
-            // npm 12 keys the report by package name instead of returning an array.
-            const entry = Object.values(doc)[0];
-            const files = entry.files.map((f) => f.path);
-            const need = [
-              "package.json",
-              "cordis.patch.yml",
-              "lib/index.js",
-              "lib/client.js",
-              "lib/projection.js",
-              "lib/resume.js",
-              "README.md",
-              "LICENSE"
-            ];
-            const missing = need.filter((f) => !files.includes(f));
-            if (missing.length > 0) {
-              console.error("FAIL: tarball is missing " + missing.join(", "));
-              process.exit(1);
-            }
-            console.log("pack OK: " + files.length + " files, " + entry.size + " bytes packed");
-          '
+          node scripts/check-pack.mjs /tmp/pack.json
