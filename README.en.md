@@ -89,7 +89,11 @@ The event shapes in the suite come from real session logs rather than invented a
 
 ## Compatibility
 
-Verified on DSH `0.2.0-rc.2` and `0.2.1-rc.2`. `dsh.engines.dsh` declares `>=0.2.0-rc.2 <0.3.0`; below that floor or at `0.3.0` the install is refused.
+Verified on DSH `0.2.0-rc.2` and `0.2.1-rc.2`. `dsh.engines.dsh` declares `>=0.2.0-rc.2 <0.2.1-0 || >=0.2.1-rc.1 <0.3.0-0`; below that floor, or at `0.3.0` (including `0.3.0-rc.1` and other prereleases of it), the install is refused.
+
+The range is written in two segments rather than `>=0.2.0-rc.2 <0.3.0` because the single-segment form silently excludes every `0.2.1-*` prerelease: node-semver only admits a prerelease version when *some comparator itself* shares its full `major.minor.patch` tuple and carries a prerelease tag. With one segment, `0.2.1-rc.2` is excluded and `npm install` fails with `ERESOLVE`. DSH's own compatibility gate evaluates with `includePrerelease: true`, which hides the problem — so the two-segment form is a fix, not a style preference.
+
+For the same reason, every `@deepseek-ai/*` peer range names a version line and none uses `"*"`. These packages keep a long-stale `latest` tag (the harness-matched line sits on `next`), so a wildcard resolves to an old `0.0.x` graph that includes packages never published to npm, and the install fails outright.
 
 Relies on these internal contracts, which may change across DSH releases: the `turn/end` reason enum, the `conversation.input.right` slot, the `<hash>_primary` class name, `agent.inbox.prepend` / `agent.steer`, and `window.__ModuleLoader__.load`.
 

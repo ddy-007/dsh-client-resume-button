@@ -89,7 +89,11 @@ npm run verify   # 在临时 DSH_HOME 里用真实投影注册表跑一遍
 
 ## 兼容性
 
-实测 DSH `0.2.0-rc.2`、`0.2.1-rc.2`。`dsh.engines.dsh` 声明 `>=0.2.0-rc.2 <0.3.0`，低于下界或达到 `0.3.0` 会被拒绝安装。
+实测 DSH `0.2.0-rc.2`、`0.2.1-rc.2`。`dsh.engines.dsh` 声明 `>=0.2.0-rc.2 <0.2.1-0 || >=0.2.1-rc.1 <0.3.0-0`，低于下界或达到 `0.3.0`（含 `0.3.0-rc.1` 这类预发布版）会被拒绝安装。
+
+范围写成两段而不是 `>=0.2.0-rc.2 <0.3.0`，是因为后者会静默排除所有 `0.2.1-*` 预发布版：node-semver 只有在**某个比较符自身**与目标版本共享完整的 `major.minor.patch` 元组、且该比较符带预发布标签时才放行预发布版本。写成一整段时，`0.2.1-rc.2` 被排除，`npm install` 会直接报 `ERESOLVE`。DSH 自己的兼容门用 `includePrerelease: true` 求值，恰好看不出这个问题——所以两段式是这个缺陷的修复，不是风格偏好。
+
+同样地，`@deepseek-ai/*` 的 peer 范围全部写明版本线，没有一处用 `"*"`。这些包在 npm 上的 `latest` 标签停留在很久以前的版本（配套 harness 的线在 `next` 上），`"*"` 会让 npm 挑 `latest`，展开出一份 `0.0.x` 的旧依赖图，其中包含从未发布到 npm 的包，安装当场失败。
 
 依赖以下内部约定，DSH 升级后可能失效：`turn/end` reason 枚举、`conversation.input.right` 槽位、`<hash>_primary` 类名、`agent.inbox.prepend` / `agent.steer`、`window.__ModuleLoader__.load`。
 
