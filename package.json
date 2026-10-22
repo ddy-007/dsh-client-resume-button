@@ -1,6 +1,6 @@
 {
   "name": "client-resume-button",
-  "version": "0.1.4",
+  "version": "0.1.5",
   "type": "module",
   "description": "Adds a Continue button to the DeepSeek Harness composer: when the previous turn was interrupted (by the user, a crash, or an error), one click asks the model to pick that turn back up.",
   "keywords": [
