@@ -72,14 +72,18 @@ dsh plugin --profile desktop remove client-resume-button
 ## 验证
 
 ```sh
-npm test      # 26 个断言：三种中断各留标记，completed 与超时不留
+npm test         # 契约测试：投影折叠、按钮可见性、内部约定自检
 npm run record   # 每态一次折叠的人可读记录
 npm run verify   # 在临时 DSH_HOME 里用真实投影注册表跑一遍
 ```
 
-`npm test` 与 `npm run record` 只碰 `lib/projection.js`，它没有 import，所以不需要装依赖、不需要联网。`npm run verify` 需要 SDK 依赖（`pnpm install`），它会挂载真实的 Cordis 上下文与投影注册表，向真实 `Session` 追加真实事件，再读客户端渲染用的那份快照。
+测试分三层：`lib/projection.js` 的折叠逻辑（不需要装依赖、不联网）、`shouldShowButton` 的显示判断、以及 `probeContracts` 的内部约定自检。后两者由 `tests/support/load-client.mjs` 在 Node 里装载 `lib/client.js` 后调用——宿主把 React 打包在 `app.asar` 内，本地没有可解析的 React，所以覆盖的是判断逻辑，不是渲染结果。
+
+`npm run verify` 需要 SDK 依赖（`pnpm install`），它会挂载真实的 Cordis 上下文与投影注册表，向真实 `Session` 追加真实事件，再读客户端渲染用的那份快照。
 
 用例的事件形状取自真实会话日志，不是构造的近似值。
+
+CI（`.github/workflows/ci.yml`）跑四个作业：投影测试、隔离中断态、对真实 harness 的 `npm install`、打包内容核对。
 
 ## 限制
 

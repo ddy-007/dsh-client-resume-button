@@ -72,14 +72,18 @@ dsh plugin --profile desktop remove client-resume-button
 ## Verification
 
 ```sh
-npm test         # 26 assertions: each interruption leaves a mark, completed and timeout do not
+npm test         # contract tests: projection fold, button visibility, internal-contract probe
 npm run record   # one printed fold per state
 npm run verify   # mounts the real projection registry in a throwaway DSH_HOME
 ```
 
-`npm test` and `npm run record` touch only `lib/projection.js`, which has no imports, so they need no installed dependencies and no network. `npm run verify` needs the SDK (`pnpm install`): it mounts a real Cordis context and the real projection registry, appends real events to a real `Session`, then reads the snapshot the client renders from.
+The suite covers three layers: the fold in `lib/projection.js` (no installed dependencies, no network), the `shouldShowButton` visibility rule, and the `probeContracts` internal-contract check. The latter two load `lib/client.js` in Node through `tests/support/load-client.mjs` — the host bundles React inside `app.asar` and there is no resolvable React locally, so they cover the decision, not the rendering.
+
+`npm run verify` needs the SDK (`pnpm install`): it mounts a real Cordis context and the real projection registry, appends real events to a real `Session`, then reads the snapshot the client renders from.
 
 The event shapes in the suite come from real session logs rather than invented approximations.
+
+CI (`.github/workflows/ci.yml`) runs four jobs: projection tests, isolated interruption states, an `npm install` against the real harness, and a packed-contents check.
 
 ## Limitations
 
