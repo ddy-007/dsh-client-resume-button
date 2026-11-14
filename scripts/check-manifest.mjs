@@ -36,11 +36,26 @@ if (!Array.isArray(pkg.dsh?.client?.inject) || pkg.dsh.client.inject.length === 
 // --- 版本范围 ------------------------------------------------------------
 const range = pkg.dsh?.engines?.dsh;
 if (typeof range !== 'string') fail('dsh.engines.dsh must be declared');
-if (typeof pkg.peerDependencies?.['@deepseek-ai/dsh'] !== 'string') {
-  fail('@deepseek-ai/dsh peer must be declared');
-}
-if (pkg.peerDependencies['@deepseek-ai/dsh'] !== range) {
-  fail('engines.dsh and the @deepseek-ai/dsh peer must state the same range');
+
+// 刻意不声明任何 @deepseek-ai/* 的 peerDependencies。
+//
+// 理由不是风格，是实测出来的：npm 7+ 会为缺失的 peer 自动选包，而插件声明的
+// 范围一旦跨版本线，它就挑最新的那一支。实测在装了 0.2.1-rc.2 的环境里装本插件，
+// npm 会去取 dsh-client-ui-primitives@0.2.2-rc.3，那个包要求 cordis ~4.1.0，
+// 而 0.2.1 线装的是 4.0.5，于是 ERESOLVE。schemastery 也一样（0.2.1 要 ~3.18.5，
+// 0.2.2 要 ~3.19.0）。
+//
+// 这些包在宿主里必然存在——插件本来就跑在 DSH 内部——所以声明 peer 没有增加
+// 任何保障，只给了 npm 一个出错的机会。兼容性由 dsh.engines.dsh 承担：
+// dsh-app-boot 的 unmetRequirements 一旦看到顶层 engines.dsh 就只看它。
+if (pkg.peerDependencies !== undefined && Object.keys(pkg.peerDependencies).length > 0) {
+  const dshPeers = Object.keys(pkg.peerDependencies).filter((n) => n.startsWith('@deepseek-ai/'));
+  if (dshPeers.length > 0) {
+    fail(
+      `peerDependencies must not declare @deepseek-ai/* (${dshPeers.join(', ')}): ` +
+        'npm auto-installs missing peers and resolves them across version lines, which breaks installs',
+    );
+  }
 }
 
 // 单段式（例如 `>=0.2.0-rc.2 <0.3.0`）会静默排除它没有预发布比较符的那些
@@ -67,21 +82,6 @@ for (const line of KNOWN_LINES) {
 // `<0.3.0-0` 是哨兵，连 0.3.0 的预发布版一起挡住；裸 `<0.3.0` 会放行 0.3.0-rc.1。
 if (!/<0\.3\.0-0/.test(range)) {
   fail('engines.dsh upper bound must use the <0.3.0-0 sentinel so 0.3.0 prereleases stay out');
-}
-
-// --- peer 范围 -----------------------------------------------------------
-// `"*"` 对 @deepseek-ai 的包是陷阱：它们的 npm `latest` 标签停在很旧的版本
-// （配套 harness 的线在 `next` 上），通配符会让 npm 挑 `latest`，展开出一份
-// 0.0.x 旧依赖图，其中包含从未发布到 npm 的包，安装当场失败。
-for (const [name, dep] of Object.entries(pkg.peerDependencies ?? {})) {
-  if (!name.startsWith('@deepseek-ai/')) continue;
-  if (dep.trim() === '*') {
-    fail(`${name} peer must not be a bare wildcard (npm resolves it to the stale latest tag)`);
-  }
-}
-for (const [name, dep] of Object.entries(pkg.peerDependencies ?? {})) {
-  if (name === '@deepseek-ai/dsh' || !name.startsWith('@deepseek-ai/dsh-')) continue;
-  if (dep !== range) fail(`${name} peer must use the same range as engines.dsh`);
 }
 
 // --- 其余身份字段 --------------------------------------------------------

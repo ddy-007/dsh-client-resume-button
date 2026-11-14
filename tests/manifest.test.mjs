@@ -151,12 +151,32 @@ const PUBLISHED = [
 ];
 
 const enginesRange = pkg.dsh.engines.dsh;
-const peerRange = pkg.peerDependencies['@deepseek-ai/dsh'];
 const compatibilityRange = pkg.dsh.compatibility.dsh;
 
-test('三处声明的是同一个范围', () => {
-  assert.equal(enginesRange, peerRange, 'engines.dsh 与 @deepseek-ai/dsh peer 必须一致');
-  assert.equal(enginesRange, compatibilityRange, 'engines.dsh 与 dsh.compatibility.dsh 必须一致');
+test('engines.dsh 与 dsh.compatibility.dsh 声明同一个范围', () => {
+  assert.equal(enginesRange, compatibilityRange);
+});
+
+/**
+ * 不声明任何 @deepseek-ai/* 的 peerDependencies。
+ *
+ * npm 7+ 会为缺失的 peer 自动选包，而插件的范围一旦跨版本线，它就挑最新的
+ * 那一支。实测在装了 0.2.1-rc.2 的环境里装本插件，npm 会取
+ * `dsh-client-ui-primitives@0.2.2-rc.3`，那个包要求 `cordis ~4.1.0`，
+ * 而 0.2.1 线装的是 4.0.5 —— ERESOLVE。`schemastery` 同样跨线
+ * （0.2.1 要 ~3.18.5，0.2.2 要 ~3.19.0）。
+ *
+ * 这些包在宿主里必然存在，声明 peer 不增加保障，只给 npm 一个出错的机会。
+ * 兼容性由 engines.dsh 承担，DSH 的 unmetRequirements 只看它。
+ */
+test('不声明 @deepseek-ai/* 的 peerDependencies', () => {
+  const peers = pkg.peerDependencies ?? {};
+  const dshPeers = Object.keys(peers).filter((name) => name.startsWith('@deepseek-ai/'));
+  assert.deepEqual(
+    dshPeers,
+    [],
+    `${dshPeers.join(', ')} 会让 npm 跨版本线自动解析 peer，破坏安装`,
+  );
 });
 
 test('实测过的版本都被接受', () => {
@@ -170,28 +190,25 @@ test('实测过的版本都被接受', () => {
 });
 
 /**
- * 真正的回归点：旧的单区间在 npm 默认语义下拒绝所有 `0.2.1-rc.*`，
- * 而那正是 `npm install` ERESOLVE 的直接原因。
+ * 真正的回归点：旧的单区间在 npm 默认语义下拒绝所有 `0.2.1-rc.*`。
  */
 test('每个 0.2.1-rc 版本都被 npm 默认语义接受', () => {
   for (const version of PUBLISHED.filter((v) => /^0\.2\.1-rc\./.test(v))) {
     assert.ok(
-      satisfies(version, peerRange),
-      `${version} 被 peer 范围排除——这正是 ERESOLVE 的来源，必须用显式预发布分支`,
+      satisfies(version, enginesRange),
+      `${version} 被范围排除——必须用显式预发布分支`,
     );
   }
 });
 
 /**
- * 同一类缺陷的第二例：`<0.3.0-0` 那一段里没有 `0.2.2` 元组的预发布比较符，
- * 所以 `0.2.2-rc.*` 在 npm 默认语义下被静默排除，而兼容门（includePrerelease）
- * 看得过去。表现为：桌面端能装、`npm install` 报 ERESOLVE。
+ * 同一类缺陷的第二例：`<0.3.0-0` 那一段里没有 `0.2.2` 元组的预发布比较符。
  */
 test('每个 0.2.2-rc 版本都被 npm 默认语义接受', () => {
   for (const version of PUBLISHED.filter((v) => /^0\.2\.2-rc\./.test(v))) {
     assert.ok(
-      satisfies(version, peerRange),
-      `${version} 被 peer 范围排除——` +
+      satisfies(version, enginesRange),
+      `${version} 被范围排除——` +
         '`<0.3.0-0` 没有 0.2.2 元组的预发布比较符，需要独立的 || 分支',
     );
   }
@@ -208,39 +225,20 @@ test('两种求值语义对每个已发布版本结论一致', () => {
 });
 
 /**
- * 第二条回归：`"*"` 作为 DSH 包的 peer 范围是陷阱。
- *
- * 这些包在 npm 上的 `latest` 标签停在很旧的版本（例如
- * `@deepseek-ai/dsh-client-ui-conversation` 的 `latest` 是 `0.0.1-rc.1`），
- * 而 `next` 才是与当前 harness 配套的版本。`"*"` 交给 npm 自己挑，
- * 它会挑 `latest`，于是展开出一份 0.0.x 的旧依赖图——其中包括
- * 从未发布到 npm 的 `@deepseek-ai/dsh-compact`，安装当场 ERESOLVE。
- *
- * 所以每个 `@deepseek-ai/*` peer 都必须写明范围，不能用通配符。
+ * 历史上还踩过一个 `"*"` 的坑：这些包的 npm `latest` 标签停在很旧的版本
+ * （例如 `dsh-client-ui-conversation` 的 `latest` 是 `0.0.1-rc.1`），
+ * 通配符让 npm 挑 `latest`，展开出一份 0.0.x 旧依赖图，其中包含从未发布到
+ * npm 的 `dsh-compact`，安装当场失败。现在整类 peer 都删掉了，这条作为
+ * 兜底：万一有人把 `@deepseek-ai/*` 加回 peer，范围不能是通配符。
  */
-test('没有 @deepseek-ai/* peer 使用通配符', () => {
-  for (const [name, range] of Object.entries(pkg.peerDependencies)) {
+test('若存在 @deepseek-ai/* peer，其范围不得为通配符', () => {
+  const peers = pkg.peerDependencies ?? {};
+  for (const [name, range] of Object.entries(peers)) {
     if (!name.startsWith('@deepseek-ai/')) continue;
     assert.notEqual(
       range.trim(),
       '*',
       `${name} 用了 "*"：npm 会解析到过时的 latest 标签，拉出一份不存在的依赖图`,
-    );
-    assert.ok(
-      !/^[\^~]?$/.test(range.trim()),
-      `${name} 的范围 "${range}" 等于没有约束`,
-    );
-  }
-});
-
-test('所有 @deepseek-ai/dsh-* peer 与 harness 版本线一致', () => {
-  for (const [name, range] of Object.entries(pkg.peerDependencies)) {
-    if (name === '@deepseek-ai/dsh') continue;
-    if (!name.startsWith('@deepseek-ai/dsh-')) continue;
-    assert.equal(
-      range,
-      enginesRange,
-      `${name} 的范围与 engines.dsh 不一致：这些包与 harness 同版本发布，应共用同一条范围`,
     );
   }
 });

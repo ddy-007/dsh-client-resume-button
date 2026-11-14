@@ -95,9 +95,9 @@ CI（`.github/workflows/ci.yml`）跑四个作业：投影测试、隔离中断�
 
 `dsh.engines.dsh` 声明 `>=0.2.0-rc.2 <0.2.1-0 || >=0.2.1-rc.1 <0.2.2-0 || >=0.2.2-rc.1 <0.3.0-0`，低于下界或达到 `0.3.0`（含 `0.3.0-rc.1` 这类预发布版）会被拒绝安装。已验证到 DSH `0.2.2-rc.1`。
 
-范围按版本线分段而不是写成 `>=0.2.0-rc.2 <0.3.0`，是因为后者会静默排除每一段预发布版：node-semver 只有在**某个比较符自身**与目标版本共享完整的 `major.minor.patch` 元组、且该比较符带预发布标签时才放行预发布版本。写成一整段时，`0.2.1-rc.2`、`0.2.2-rc.1` 都被排除，`npm install` 会直接报 `ERESOLVE`。DSH 自己的兼容门用 `includePrerelease: true` 求值，恰好看不出这个问题——所以分段是这个缺陷的修复，不是风格偏好。每出现一条新的 `0.2.X` 版本线，就要多一段 `>=0.2.X-rc.1` 分支。
+范围按版本线分段而不是写成 `>=0.2.0-rc.2 <0.3.0`，是因为后者会静默排除每一段预发布版：node-semver 只有在**某个比较符自身**与目标版本共享完整的 `major.minor.patch` 元组、且该比较符带预发布标签时才放行预发布版本。写成一整段时，`0.2.1-rc.2`、`0.2.2-rc.1` 都被排除。DSH 自己的兼容门用 `includePrerelease: true` 求值，恰好看不出这个问题——所以分段是这个缺陷的修复，不是风格偏好。每出现一条新的 `0.2.X` 版本线，就要多一段 `>=0.2.X-rc.1` 分支。
 
-同样地，`@deepseek-ai/*` 的 peer 范围全部写明版本线，没有一处用 `"*"`。这些包在 npm 上的 `latest` 标签停留在很久以前的版本（配套 harness 的线在 `next` 上），`"*"` 会让 npm 挑 `latest`，展开出一份 `0.0.x` 的旧依赖图，其中包含从未发布到 npm 的包，安装当场失败。
+**不声明任何 `@deepseek-ai/*` 的 `peerDependencies`。** 这是实测结论：npm 7+ 会为缺失的 peer 自动选包，范围一旦跨版本线就挑最新的那一支。在装了 `0.2.1-rc.2` 的环境里装本插件，npm 会去取 `dsh-client-ui-primitives@0.2.2-rc.3`，那个包要求 `cordis ~4.1.0`，而 `0.2.1` 线装的是 `4.0.5`，于是 `ERESOLVE`；`schemastery` 同样跨线（`~3.18.5` → `~3.19.0`）。这些包在宿主里必然存在——插件本来就跑在 DSH 内部——声明 peer 不增加任何保障，只给 npm 一个出错的机会。兼容性由 `dsh.engines.dsh` 承担，DSH 的 `unmetRequirements` 一旦看到顶层 `engines.dsh` 就只看它。
 
 依赖以下内部约定，DSH 升级后可能失效：`turn/end` reason 枚举、`conversation.input.right` 槽位、类名含 `_primary` 的主提交按钮、`agent.inbox.prepend` / `agent.steer`、`window.__ModuleLoader__.load`。CSS Module 的哈希前缀（如 `RlGAzG_`）会随版本变化，插件用的是子串匹配，不依赖前缀。三条约定变化时插件会静默失效，`probeContracts()` 会在控制台警告一次。
 
