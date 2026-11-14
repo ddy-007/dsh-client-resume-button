@@ -140,6 +140,14 @@ const PUBLISHED = [
   '0.2.1-alpha.5',
   '0.2.1-rc.1',
   '0.2.1-rc.2',
+  '0.2.1-rc.3',
+  '0.2.1-rc.4',
+  '0.2.1-rc.5',
+  '0.2.2-alpha.2',
+  '0.2.2-alpha.3',
+  '0.2.2-rc.1',
+  '0.2.2-rc.2',
+  '0.2.2-rc.3',
 ];
 
 const enginesRange = pkg.dsh.engines.dsh;
@@ -151,8 +159,8 @@ test('三处声明的是同一个范围', () => {
   assert.equal(enginesRange, compatibilityRange, 'engines.dsh 与 dsh.compatibility.dsh 必须一致');
 });
 
-test('实测过的两个版本都被接受', () => {
-  for (const version of ['0.2.0-rc.2', '0.2.1-rc.2']) {
+test('实测过的版本都被接受', () => {
+  for (const version of ['0.2.0-rc.2', '0.2.1-rc.2', '0.2.2-rc.1']) {
     assert.ok(satisfies(version, enginesRange), `DSH ${version} 应被 npm 默认语义接受`);
     assert.ok(
       satisfies(version, enginesRange, { includePrerelease: true }),
@@ -170,6 +178,21 @@ test('每个 0.2.1-rc 版本都被 npm 默认语义接受', () => {
     assert.ok(
       satisfies(version, peerRange),
       `${version} 被 peer 范围排除——这正是 ERESOLVE 的来源，必须用显式预发布分支`,
+    );
+  }
+});
+
+/**
+ * 同一类缺陷的第二例：`<0.3.0-0` 那一段里没有 `0.2.2` 元组的预发布比较符，
+ * 所以 `0.2.2-rc.*` 在 npm 默认语义下被静默排除，而兼容门（includePrerelease）
+ * 看得过去。表现为：桌面端能装、`npm install` 报 ERESOLVE。
+ */
+test('每个 0.2.2-rc 版本都被 npm 默认语义接受', () => {
+  for (const version of PUBLISHED.filter((v) => /^0\.2\.2-rc\./.test(v))) {
+    assert.ok(
+      satisfies(version, peerRange),
+      `${version} 被 peer 范围排除——` +
+        '`<0.3.0-0` 没有 0.2.2 元组的预发布比较符，需要独立的 || 分支',
     );
   }
 });

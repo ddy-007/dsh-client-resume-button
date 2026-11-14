@@ -48,8 +48,21 @@ if (pkg.peerDependencies['@deepseek-ai/dsh'] !== range) {
 // major.minor.patch、且该比较符自带预发布标签时才放行预发布版本，所以
 // 0.2.1-rc.2 被排除，`npm install` 直接 ERESOLVE。DSH 的兼容门用
 // includePrerelease: true 求值，看不出这个问题。
-if (!range.includes('||')) {
-  fail('engines.dsh needs an explicit prerelease branch (a bare range drops 0.2.1-rc.* and breaks npm install)');
+//
+// 每出现一个新的 0.2.X 版本线，就要多一段 `>=0.2.X-rc.1` 分支，否则那条线
+// 上的预发布版会在 npm 语义里被悄悄排除。这个错误已经犯过两次（0.2.1、0.2.2），
+// 所以这里按「已知版本线」逐条校验，而不是只看有没有 `||`。
+const KNOWN_LINES = ['0.2.0', '0.2.1', '0.2.2'];
+for (const line of KNOWN_LINES) {
+  // 该版本线需要一个能接纳其预发布版的分支：`>=<line>-rc...` 或 `<line>-0` 上界形式。
+  const admitsPrerelease =
+    range.includes(`>=${line}-rc`) || range.includes(`>=${line}-alpha`);
+  if (!admitsPrerelease) {
+    fail(
+      `engines.dsh has no branch admitting ${line} prereleases; ` +
+        'node-semver only matches a prerelease when a comparator shares its exact major.minor.patch',
+    );
+  }
 }
 // `<0.3.0-0` 是哨兵，连 0.3.0 的预发布版一起挡住；裸 `<0.3.0` 会放行 0.3.0-rc.1。
 if (!/<0\.3\.0-0/.test(range)) {

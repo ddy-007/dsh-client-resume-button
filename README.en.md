@@ -93,13 +93,13 @@ CI (`.github/workflows/ci.yml`) runs four jobs: projection tests, isolated inter
 
 ## Compatibility
 
-Verified on DSH `0.2.0-rc.2` and `0.2.1-rc.2`. `dsh.engines.dsh` declares `>=0.2.0-rc.2 <0.2.1-0 || >=0.2.1-rc.1 <0.3.0-0`; below that floor, or at `0.3.0` (including `0.3.0-rc.1` and other prereleases of it), the install is refused.
+`dsh.engines.dsh` declares `>=0.2.0-rc.2 <0.2.1-0 || >=0.2.1-rc.1 <0.2.2-0 || >=0.2.2-rc.1 <0.3.0-0`; below that floor, or at `0.3.0` (including `0.3.0-rc.1` and other prereleases of it), the install is refused. Verified up to DSH `0.2.2-rc.1`.
 
-The range is written in two segments rather than `>=0.2.0-rc.2 <0.3.0` because the single-segment form silently excludes every `0.2.1-*` prerelease: node-semver only admits a prerelease version when *some comparator itself* shares its full `major.minor.patch` tuple and carries a prerelease tag. With one segment, `0.2.1-rc.2` is excluded and `npm install` fails with `ERESOLVE`. DSH's own compatibility gate evaluates with `includePrerelease: true`, which hides the problem — so the two-segment form is a fix, not a style preference.
+The range is split per version line rather than written as `>=0.2.0-rc.2 <0.3.0` because the single-segment form silently excludes every prerelease: node-semver only admits a prerelease version when *some comparator itself* shares its full `major.minor.patch` tuple and carries a prerelease tag. With one segment, `0.2.1-rc.2` and `0.2.2-rc.1` are both excluded and `npm install` fails with `ERESOLVE`. DSH's own compatibility gate evaluates with `includePrerelease: true`, which hides the problem — so the split form is a fix, not a style preference. Each new `0.2.X` line needs its own `>=0.2.X-rc.1` branch.
 
 For the same reason, every `@deepseek-ai/*` peer range names a version line and none uses `"*"`. These packages keep a long-stale `latest` tag (the harness-matched line sits on `next`), so a wildcard resolves to an old `0.0.x` graph that includes packages never published to npm, and the install fails outright.
 
-Relies on these internal contracts, which may change across DSH releases: the `turn/end` reason enum, the `conversation.input.right` slot, the `<hash>_primary` class name, `agent.inbox.prepend` / `agent.steer`, and `window.__ModuleLoader__.load`.
+Relies on these internal contracts, which may change across DSH releases: the `turn/end` reason enum, the `conversation.input.right` slot, the submit button whose class contains `_primary`, `agent.inbox.prepend` / `agent.steer`, and `window.__ModuleLoader__.load`. The CSS Module hash prefix (such as `RlGAzG_`) changes between releases; the plugin matches on the substring, not the prefix. Three of these fail silently when they drift, so `probeContracts()` warns once in the console.
 
 ## License
 
